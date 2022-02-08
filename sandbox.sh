@@ -81,6 +81,7 @@ create_new_deku_environment() {
     ADDRESS=$(sidecli self $FOLDER | grep "address:" | awk '{ print $2 }')
     URI=$(sidecli self $FOLDER | grep "uri:" | awk '{ print $2 }')
     VALIDATORS[$i]="$i;$KEY;$URI;$ADDRESS"
+    cp ./state_transition/state_transition "$DATA_DIRECTORY/$i"
   done
 
   message "Deploying new consensus contract"
