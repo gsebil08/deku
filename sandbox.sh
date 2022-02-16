@@ -86,13 +86,13 @@ EOF
 deploy_contract () {
   message "Deploying new $1 contract"
   storage=$(ligo compile storage "$2" "$3")
-  ligo compile contract $2
+  contract=$(ligo compile contract $2)
   
-  message "Originating $1 contract"
+  echo "Originating $1 contract"
   sleep 2
   tezos-client --endpoint $RPC_NODE originate contract "$1" \
     transferring 0 from myWallet \
-    running "$2" \
+    running "$contract" \
     --init "$storage" \
     --burn-cap 2 \
     --force
@@ -142,8 +142,8 @@ EOF
 EOF
   )
 
-  consensus="./tezos_interop/consensus.mligo"
-  deploy_contract "consensus" $consensus $storage
+  consensus="./src/tezos_interop/consensus.mligo"
+  deploy_contract "consensus" "$consensus" "$storage"
   # storage=$(ligo compile storage "$consensus" "$storage")
   # contract=$(ligo compile contract $consensus)
 
