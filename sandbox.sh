@@ -50,6 +50,19 @@ EOF
   echo "]"
 }
 
+validator_storage() {
+  ## most of the noise in this function is because of indentation
+  echo "Map.literal ["
+  for VALIDATOR in "${VALIDATORS[@]}"; do
+    KEY=$(echo $VALIDATOR | awk -F';' '{ print $2 }')
+    URI=$(echo $VALIDATOR | awk -F';' '{ print $3 }')
+    cat <<EOF
+  (("$KEY" : key), (0, "$URI"));
+EOF
+  done
+  echo "]"
+}
+
 trusted_validator_membership_change_json() {
   echo "["
   for VALIDATOR in "${VALIDATORS[@]}"; do
@@ -70,6 +83,21 @@ EOF
   echo "]"
 }
 
+deploy_contract () {
+  message "Deploying new $1 contract"
+  storage=$(ligo compile storage "$2" "$3")
+  ligo compile contract $2
+  
+  message "Originating $1 contract"
+  sleep 2
+  tezos-client --endpoint $RPC_NODE originate contract "$1" \
+    transferring 0 from myWallet \
+    running "$2" \
+    --init "$storage" \
+    --burn-cap 2 \
+    --force
+}
+
 create_new_deku_environment() {
   message "Creating validator identities"
   for i in ${VALIDATORS[@]}; do
@@ -83,7 +111,6 @@ create_new_deku_environment() {
     VALIDATORS[$i]="$i;$KEY;$URI;$ADDRESS"
   done
 
-  message "Deploying new consensus contract"
 
   # To register the validators, run consensus.mligo with the list of
   # validators. To do this quickly, open the LIGO IDE with the url
@@ -115,18 +142,19 @@ EOF
 EOF
   )
 
-  consensus="./src/tezos_interop/consensus.mligo"
-  storage=$(ligo compile storage "$consensus" "$storage")
-  contract=$(ligo compile contract $consensus)
+  consensus="./tezos_interop/consensus.mligo"
+  deploy_contract "consensus" $consensus $storage
+  # storage=$(ligo compile storage "$consensus" "$storage")
+  # contract=$(ligo compile contract $consensus)
 
-  message "Originating contract"
-  sleep 2
-  tezos-client --endpoint $RPC_NODE originate contract "consensus" \
-    transferring 0 from myWallet \
-    running "$contract" \
-    --init "$storage" \
-    --burn-cap 2 \
-    --force
+  # message "Originating contract"
+  # sleep 2
+  # tezos-client --endpoint $RPC_NODE originate contract "consensus" \
+  #   transferring 0 from myWallet \
+  #   running "$contract" \
+  #   --init "$storage" \
+  #   --burn-cap 2 \
+  #   --force
 
   for VALIDATOR in ${VALIDATORS[@]}; do
     i=$(echo $VALIDATOR | awk -F';' '{ print $1 }')
