@@ -28,3 +28,8 @@ let rec fold_left_ok f state = function
   match f state head with
   | Ok state -> fold_left_ok f state tl
   | Error error -> Error error
+let rec map_ok f = function
+  | [] -> Ok []
+  | head :: tl ->
+    Result.bind (f head) (fun head ->
+        Result.bind (map_ok f tl) (fun tl -> Ok (head :: tl)))

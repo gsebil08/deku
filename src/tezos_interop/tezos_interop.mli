@@ -6,6 +6,7 @@ module Context : sig
     rpc_node : Uri.t;
     secret : Secret.t;
     consensus_contract : Address.t;
+    discovery_contract : Address.t;
     required_confirmations : int;
   }
 end
@@ -36,6 +37,9 @@ module Consensus : sig
     context:Context.t -> on_operation:(operation -> unit) -> unit
   val fetch_validators :
     context:Context.t -> (Key_hash.t list, string) result Lwt.t
+  module Key_map : module type of Map.Make_with_yojson(Crypto.Key)
+  val fetch_discovery :
+    context:Context.t -> (string Key_map.t, string) result Lwt.t
 end
 module Discovery : sig
   val sign : Secret.t -> nonce:int64 -> Uri.t -> Signature.t

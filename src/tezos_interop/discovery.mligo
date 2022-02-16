@@ -1,8 +1,7 @@
-(* TODO: probably string *)
-type uri = bytes
+type uri = string
 (* TODO: maybe nat *)
 type nonce = int
-type storage = (key, (nonce * uri)) big_map
+type storage = (key, (nonce * uri)) map
 type uri_update = {
   key: key;
   uri: uri;
@@ -11,7 +10,7 @@ type uri_update = {
 }
 
 let check_nonce (storage: storage) (key: key) (nonce: nonce) =
-  match Big_map.find_opt key storage with
+  match Map.find_opt key storage with
   | Some (old_nonce, _) -> 
     if not (nonce > old_nonce) then
       failwith "old nonce"
@@ -35,5 +34,5 @@ let main (uri_update, storage : uri_update * storage) =
   let () = check_nonce storage key nonce in
   let () = check_signature key uri nonce signature in
   
-  let storage = Big_map.add key (nonce, uri) storage in
+  let storage = Map.add key (nonce, uri) storage in
   (([] : operation list), storage)

@@ -416,11 +416,17 @@ let info_setup_tezos =
   let doc = "Setup Tezos identity" in
   Term.info "setup-tezos" ~version:"%%VERSION%%" ~doc ~exits ~man
 let setup_tezos node_folder rpc_node secret consensus_contract
-    required_confirmations =
+    discovery_contract required_confirmations =
   let%await () = ensure_folder node_folder in
   let context =
     let open Tezos_interop.Context in
-    { rpc_node; secret; consensus_contract; required_confirmations } in
+    {
+      rpc_node;
+      secret;
+      consensus_contract;
+      discovery_contract;
+      required_confirmations;
+    } in
   let%await () = write_interop_context ~node_folder context in
   await (`Ok ())
 let setup_tezos =
@@ -450,6 +456,13 @@ let setup_tezos =
     required
     & opt (some address_tezos_interop) None
     & info ["tezos_consensus_contract"] ~doc ~docv in
+  let tezos_discovery_contract_address =
+    let docv = "tezos_discovery_contract_address" in
+    let doc = "The address of the Tezos peer discovery contract." in
+    let open Arg in
+    required
+    & opt (some address_tezos_interop) None
+    & info ["tezos_discovery_contract"] ~doc ~docv in
   let tezos_required_confirmations =
     let docv = "int" in
     let doc =
@@ -466,6 +479,7 @@ let setup_tezos =
     $ tezos_node_uri
     $ tezos_secret
     $ tezos_consensus_contract_address
+    $ tezos_discovery_contract_address
     $ tezos_required_confirmations)
 let show_help =
   let doc = "a tool for interacting with the WIP Tezos Sidechain" in

@@ -15,6 +15,8 @@ let get_initial_state ~folder =
     Files.Interop_context.read ~file:(folder ^ "/tezos.json") in
   let%await validator_res =
     Tezos_interop.Consensus.fetch_validators ~context:interop_context in
+  let%await _key_uri_mappings =
+    Tezos_interop.Consensus.fetch_discovery ~context:interop_context in
   let validators =
     match validator_res with
     | Ok current_validators ->

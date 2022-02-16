@@ -6,6 +6,7 @@ module Context = struct
     rpc_node : Uri.t;
     secret : Secret.t;
     consensus_contract : Address.t;
+    discovery_contract : Address.t;
     required_confirmations : int;
   }
 end
@@ -351,6 +352,55 @@ module Consensus = struct
       Fetch_storage.run ~confirmation:required_confirmations ~rpc_node
         ~contract_address:consensus_contract in
     Lwt.return (micheline_to_validators micheline_storage)
+  module Key_map = Map.Make_with_yojson(Crypto.Key)
+  let fetch_discovery ~context =
+    let Context.{ rpc_node; required_confirmations; discovery_contract; _ } =
+      context in
+    let micheline_to_discovery_keys
+        (micheline : ((int, prim) Micheline.node, string) result) =
+      let print micheline =
+        micheline
+        |> Micheline.map_node
+             (fun _ -> Micheline_printer.{ comment = None })
+             (fun prim ->
+               prim
+               |> Data_encoding.Json.construct
+                    Michelson.Michelson_v1_primitives.prim_encoding
+               |> Data_encoding.Json.to_string)
+        |> Format.asprintf "%a\n" Micheline_printer.print_expr
+        |> Printf.printf "micheline: %s\n" in
+
+      let () =
+        match micheline with
+        | Ok micheline -> print micheline
+        | _ -> () in
+
+      match micheline with
+      | Ok (Micheline.Seq (_, key_uri_mappings)) ->
+        List.fold_left_ok
+          (fun acc k ->
+            match k with
+            | Micheline.Prim
+                ( _,
+                  D_Elt,
+                  [
+                    Micheline.String (_, key);
+                    Micheline.Prim (_, D_Pair, [_; Micheline.String (_, uri)], _);
+                  ],
+                  _ ) ->
+              let key = Crypto.Key.of_string key in 
+              match key with 
+              | Some key -> Ok(Key_map.add key uri acc)
+              | _ -> Error "Invalid key"
+            | _ -> failwith "Failed to parse storage micheline expression")
+          Key_map.empty key_uri_mappings 
+      | Ok _ -> Error "Failed to parse storage micheline expression"
+      | Error msg -> failwith msg in
+    let%await micheline_storage =
+      Fetch_storage.run ~confirmation:required_confirmations ~rpc_node
+        ~contract_address:discovery_contract in
+    let key_uri_mappings = micheline_to_discovery_keys micheline_storage in
+    Lwt.return key_uri_mappings
 end
 module Discovery = struct
   open Pack

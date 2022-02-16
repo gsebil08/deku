@@ -53,6 +53,7 @@ module Interop_context = struct
     rpc_node : Uri.t;
     secret : Secret.t;
     consensus_contract : Tezos.Address.t;
+    discovery_contract : Tezos.Address.t;
     required_confirmations : int;
   }
   [@@deriving yojson]
