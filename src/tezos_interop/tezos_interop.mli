@@ -36,10 +36,7 @@ module Consensus : sig
   val listen_operations :
     context:Context.t -> on_operation:(operation -> unit) -> unit
   val fetch_validators :
-    context:Context.t -> (Key_hash.t list, string) result Lwt.t
-  module Key_map : module type of Map.Make_with_yojson(Crypto.Key)
-  val fetch_discovery :
-    context:Context.t -> (string Key_map.t, string) result Lwt.t
+    context:Context.t -> ((Key_hash.t * Uri.t) list, string) result Lwt.t
 end
 module Discovery : sig
   val sign : Secret.t -> nonce:int64 -> Uri.t -> Signature.t

@@ -15,15 +15,9 @@ let get_initial_state ~folder =
     Files.Interop_context.read ~file:(folder ^ "/tezos.json") in
   let%await validator_res =
     Tezos_interop.Consensus.fetch_validators ~context:interop_context in
-  let%await _key_uri_mappings =
-    Tezos_interop.Consensus.fetch_discovery ~context:interop_context in
   let validators =
     match validator_res with
-    | Ok current_validators ->
-      current_validators
-      |> List.mapi (fun i validator ->
-             ( validator,
-               Printf.sprintf "http://localhost:444%d" i |> Uri.of_string ))
+    | Ok current_validators -> current_validators
     | Error err -> failwith err in
   let initial_validators_uri =
     List.fold_left
