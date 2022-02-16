@@ -28,29 +28,7 @@ message() {
   echo "=========== $@ ==========="
 }
 
-validators_json() {
-  ## most of the noise in this function is because of indentation
-  echo "["
-  for VALIDATOR in "${VALIDATORS[@]}"; do
-    i=$(echo $VALIDATOR | awk -F';' '{ print $1 }')
-    ADDRESS=$(echo $VALIDATOR | awk -F';' '{ print $4 }')
-    URI=$(echo $VALIDATOR | awk -F';' '{ print $3 }')
-    if [ $i != 0 ]; then
-      printf ",
-"
-    fi
-    cat <<EOF
-  {
-    "address": "$ADDRESS",
-    "uri": "$URI"
-EOF
-    printf "  }"
-  done
-  echo ""
-  echo "]"
-}
-
-validator_storage() {
+discovery_storage() {
   ## most of the noise in this function is because of indentation
   echo "Map.literal ["
   for VALIDATOR in "${VALIDATORS[@]}"; do
@@ -115,7 +93,7 @@ create_new_deku_environment() {
   # To register the validators, run consensus.mligo with the list of
   # validators. To do this quickly, open the LIGO IDE with the url
   # provided and paste the following storage as inputs to the contract.
-  storage=$(
+  consensus_storage=$(
     cat <<EOF
 {
   root_hash = {
@@ -143,28 +121,19 @@ EOF
   )
 
   consensus="./src/tezos_interop/consensus.mligo"
-  deploy_contract "consensus" "$consensus" "$storage"
-  # storage=$(ligo compile storage "$consensus" "$storage")
-  # contract=$(ligo compile contract $consensus)
-
-  # message "Originating contract"
-  # sleep 2
-  # tezos-client --endpoint $RPC_NODE originate contract "consensus" \
-  #   transferring 0 from myWallet \
-  #   running "$contract" \
-  #   --init "$storage" \
-  #   --burn-cap 2 \
-  #   --force
+  discovery="./src/tezos_interop/discovery.mligo"
+  deploy_contract "consensus" "$consensus" "$consensus_storage"
+  deploy_contract "discovery" "$discovery" "$(discovery_storage)"
 
   for VALIDATOR in ${VALIDATORS[@]}; do
     i=$(echo $VALIDATOR | awk -F';' '{ print $1 }')
     FOLDER="$DATA_DIRECTORY/$i"
-    validators_json >"$FOLDER/validators.json"
     trusted_validator_membership_change_json >"$FOLDER/trusted-validator-membership-change.json"
   done
 
   message "Getting contract address"
   TEZOS_CONSENSUS_ADDRESS="$(tezos-client --endpoint $RPC_NODE show known contract consensus | grep KT1 | tr -d '\r')"
+  TEZOS_DISCOVERY_ADDRESS="$(tezos-client --endpoint $RPC_NODE show known contract discovery | grep KT1 | tr -d '\r')"
 
   message "Configuring Deku nodes"
   for VALIDATOR in ${VALIDATORS[@]}; do
@@ -173,6 +142,7 @@ EOF
 
     sidecli setup-tezos "$FOLDER" \
       --tezos_consensus_contract="$TEZOS_CONSENSUS_ADDRESS" \
+      --tezos_discovery_contract="$TEZOS_DISCOVERY_ADDRESS" \
       --tezos_rpc_node=$RPC_NODE \
       --tezos_secret="$SECRET_KEY" \
       --unsafe_tezos_required_confirmations 1
